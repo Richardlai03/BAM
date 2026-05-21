@@ -12,7 +12,7 @@ class priceTimePriorityMatching {
 public:
     struct Order {
         int orderID;
-        tm timeCreated;
+        long long timeCreated;
         string side;
         double price;
         int quantity;
@@ -46,41 +46,41 @@ public:
 
     priority_queue<Order, vector<Order>, CompareBuyOrder> buyBook;
     priority_queue<Order, vector<Order>, CompareSellOrder> sellBook;
-
+    int execID = 1;
+    vector<Execution> executions;
     void processing (Order a) {
         if (a.side == "buy") {
-            while (a.price >= sellBook.top().price) {
+            while (!sellBook.empty() && a.price >= sellBook.top().price) {
                 Order b = sellBook.top();
-                int execQuantity = a.quantity;
-                if (a.quantity > b.quantity) {
-                    execQuantity = b.quantity;
-                }
-                Execution exec {1, b.price, execQuantity, b.orderID, a.orderID};
+                sellBook.pop();
+                int execQuantity = min(a.quantity, b.quantity);
+                a.quantity -= execQuantity;
                 b.quantity -= execQuantity;
-                if (b.quantity == 0) {
-                    sellBook.pop();
+                executions.push_back({execID++, b.price, execQuantity, b.orderID, a.orderID});
+                if (b.quantity > 0) {
+                    sellBook.push(b);
                 }
             }
-            buyBook.push(a);
+            if (a.quantity > 0) {
+                buyBook.push(a);
         }
         else if (a.side == "sell") {
-            while (a.price <= buyBook.top().price) {
+            while (!buyBook.empty() && a.quantity > 0 && a.price <= buyBook.top().price) {
                 Order b = buyBook.top();
-                int execQuantity = a.quantity;
-                if (a.quantity > b.quantity) {
-                    execQuantity = b.quantity;
-                }
-                Execution exec {1, b.price, execQuantity, a.orderID, b.orderID};
+                buyBook.pop();
+                int execQuantity = min(a.quantity, b.quantity);
+                a.quantity -= execQuantity;
                 b.quantity -= execQuantity;
-                if(b.quantity == 0) {
-                    buyBook.pop();
+                executions.push_back({execID++, b.price, execQuantity, a.orderID, b.orderID});
+                if(b.quantity > 0) {
+                    buyBook.push(b);
                 }
             }
-            sellBook.push(a);
+            if(b.quantity > 0) {
+                buyBook.push(b);
+            }        
         }
     }
-
-
 };
 
 
